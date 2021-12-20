@@ -1,4 +1,5 @@
 import asyncio
+from inspect import isawaitable
 from typing import Union, Callable, Optional
 import types
 
@@ -47,9 +48,13 @@ async def wait_for(self: interactions.Client, name: str,
             self.websocket.dispatch.extra_events[name].remove(fut)
             raise
 
-        if check and not check(*res):
-            # The check failed, so try again next time
-            continue
+        if check:
+            checked = check(*res)
+            if isawaitable(checked):
+                checked = await checked
+            if not checked:
+                # The check failed, so try again next time
+                continue
 
         # I feel like this needs more?
         # yes it did
