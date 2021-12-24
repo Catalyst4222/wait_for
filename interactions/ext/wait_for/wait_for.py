@@ -1,5 +1,5 @@
 import asyncio
-from inspect import isawaitable
+from inspect import isawaitable, iscoroutinefunction
 from typing import Union, Callable, Optional, Any, Awaitable, Type, List
 import types
 
@@ -25,6 +25,7 @@ class ExtendedListener(interactions.api.dispatch.Listener):
     def add(self, name: str) -> asyncio.Future:
         """
         Returns a Future that will resolve whenever the supplied event is dispatched
+
         :param name: The event to listen for
         :type name: str
         :return: A future that will be resolved on the next event dispatch with the data given
@@ -69,8 +70,10 @@ async def wait_for(
     timeout: Optional[float] = None,
 ) -> Any:
     """
-    Wait for an event once, and return the result.
+    Waits for an event once, and returns the result.
+
     Unlike event decorators, this is not persistent, and can be used to only proceed in a command once an event happens.
+
     :param bot: The bot that will receive the event
     :type bot: interactions.Client
     :param name: The event to wait for
@@ -113,12 +116,13 @@ async def wait_for_component(
         Union[interactions.Button, interactions.SelectMenu],
         List[Union[interactions.Button, interactions.SelectMenu]],
     ] = None,
+    messages: Union[interactions.Message, int, list] = None,
     check: Optional[Callable[..., Union[bool, Awaitable[bool]]]] = None,
     timeout: Optional[float] = None,
-    messages: Union[interactions.Message, int, list] = None,
 ):
     """
-    Wait for a component to be interacted with, and return the result.
+    Waits for a component to be interacted with, and returns the resulting context.
+
     :param components: The component to wait for
     :type components: Union[interactions.Button, interactions.SelectMenu]
     :param check: A function or coroutine to call, which should return a truthy value if the data should be returned
@@ -173,18 +177,16 @@ async def wait_for_component(
                 elif isinstance(message, int):
                     messages_ids.append(message)
 
-    async def _check(ctx: interactions.ComponentContext) -> bool:
-        if ctx.data.custom_id in custom_ids:
-            if messages_ids and ctx.message.id not in messages_ids:
-                return False
-            if check:
-                if isawaitable(check):
-                    return await check(ctx)
-                return check(ctx)
-            return True
-        return False
+    def _check(ctx: interactions.ComponentContext) -> bool:
+        if custom_ids and ctx.data.custom_id not in custom_ids:
+            return False
+        if messages_ids and ctx.message.id not in messages_ids:
+            return False
+        if check:
+            return check(ctx)
+        return True
 
-    return await wait_for(bot, "on_interaction_create", check=_check, timeout=timeout)
+    return await wait_for(bot, "on_message_component", check=_check, timeout=timeout)
 
 
 def _replace_values(old, new):
@@ -209,7 +211,9 @@ def setup(
 ) -> None:
     """
     Apply hooks to a bot to add additional features
-    This function required, as importing alone won't extend the classes
+
+    This function is required, as importing alone won't extend the classes
+
     :param Client bot: The bot instance or class to apply hooks to
     :param bool add_method: If ``wait_for`` should be attached to the bot
     :param bool add_interaction_events: Whether to add ``on_message_component``, ``on_application_command``, and other interaction event
