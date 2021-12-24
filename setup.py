@@ -7,9 +7,6 @@ with open('interactions/ext/wait_for/__init__.py') as f:
 with open("README.md", "r", encoding="utf-8") as f:
     long_description = f.read()
 
-with open('requirements.txt') as f:
-    requirements = f.read().splitlines()
-
 setup(
     name="interactions-wait-for",
     version=version,
@@ -27,5 +24,5 @@ setup(
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
     ],
-    install_requires=requirements,
+    install_requires=['discord-py-interactions>=4.0.0'],
 )
