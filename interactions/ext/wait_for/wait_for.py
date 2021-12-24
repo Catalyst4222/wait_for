@@ -1,6 +1,6 @@
 import asyncio
-from inspect import isawaitable, iscoroutinefunction
-from typing import Union, Callable, Optional, Any, Awaitable, Type, List
+from inspect import isawaitable
+from typing import Union, Callable, Optional, Any, Awaitable, List
 import types
 
 import interactions
