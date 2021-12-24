@@ -88,7 +88,7 @@ import asyncio
 bot = Client(token="...")
 
 # apply hooks to the class
-# add_method addsthe wait_for and wait_for_component methods to your bot
+# add_method adds the wait_for and wait_for_component methods to your bot
 wait_for.setup(bot, add_method=True)
 
 
