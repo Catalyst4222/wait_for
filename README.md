@@ -37,7 +37,8 @@ from interactions.ext import wait_for
 Here is an example code which shows you how to wait for a message, with an asynchronous check and a timeout:
 ```py
 from interactions import Client, Message
-from interactions.ext import wait_for
+from interactions.ext.wait_for import wait_for
+import asyncio
 
 bot = Client(token="...")
 
@@ -58,8 +59,8 @@ async def test(ctx):
         return False
 
     try:
-        msg: Message = await bot.wait_for(
-            "on_message_create", check=check, timeout=15
+        msg: Message = await wait_for(
+            bot, "on_message_create", check=check, timeout=15
         )
     except asyncio.TimeoutError:
         return await ctx.send("You said nothing :(")
@@ -71,40 +72,23 @@ bot.start()
 --------------------------------------
 
 # `wait_for_component`
-## Benefits:
-- An actual `wait_for`
-- Asynchronous checks
-- Timeouts
-- Doesn't overwrite any library code
-
-## So what is this so-called `wait_for`?
-`wait_for` is an awaitable future that waits for a specific component(s), and returns the `ComponentContext`.
-
-Use cases:
-- Waiting for a component
-- Continue commands after response
-- Unlike component callbacks:
-    - You keep data from your slash command
-    - You can listen for a response with a timer and a check
-    - You can do stuff when timed out
 
 ## What's the difference between `wait_for` and `wait_for_component`?
 While you could wait for a component click with `wait_for`, `wait_for_component` is designed specifically to get a response from any one of many components that you can pass through as a list. You can also add messages to the `wait_for_component` so that it will check if the component clicked is in any one of the messages specified.
 
 ## Okay, but how do I use it?
-You import the `wait_for` library like this:
-```py
-from interactions.ext import wait_for
-```
+
 
 Here is an example code which shows you how to wait for a message, with an asynchronous check and a timeout:
 ```py
 from interactions import Client, ComponentContext, Button
 from interactions.ext import wait_for
+import asyncio
 
 bot = Client(token="...")
 
 # apply hooks to the class
+# add_method addsthe wait_for and wait_for_component methods to your bot
 wait_for.setup(bot, add_method=True)
 
 
@@ -122,7 +106,7 @@ async def test(ctx):
         return False
 
     try:
-        button_ctx = await bot.wait_for_component(
+        button_ctx: ComponentContext = await bot.wait_for_component(
             components=button, check=check, timeout=15
         )
     except asyncio.TimeoutError:
@@ -134,7 +118,7 @@ bot.start()
 
 --------------------------------------
 
-## *class* wait_for
+## *async* wait_for
 
 ### Arguments:
 - `name` - `str`: The event to wait for
@@ -149,7 +133,7 @@ The value of the dispatched event
 
 --------------------------------------
 
-## *class* wait_for_component
+## *async* wait_for_component
 
 ### Arguments:
 - `components` - `Union[Union[Button, SelectMenu], List[Union[Button, SelectMenu]]]`: The component(s) to wait for, default `None`
