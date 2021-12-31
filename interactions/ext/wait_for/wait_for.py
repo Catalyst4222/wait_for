@@ -123,6 +123,8 @@ async def wait_for_component(
     """
     Waits for a component to be interacted with, and returns the resulting context.
 
+    :param bot: The bot to listen with
+    :type bot: interactions.Client
     :param components: The component to wait for
     :type components: Union[interactions.Button, interactions.SelectMenu]
     :param check: A function or coroutine to call, which should return a truthy value if the data should be returned
