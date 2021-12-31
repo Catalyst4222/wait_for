@@ -226,7 +226,7 @@ def setup(
         bot.wait_for = types.MethodType(wait_for, bot)
         bot.wait_for_component = types.MethodType(wait_for_component, bot)
 
-    if add_interaction_events:
+    if add_interaction_events and not isinstance(bot.websocket, ExtendedWebSocket):
         old_websocket = bot.websocket
         new_websocket = ExtendedWebSocket(
             old_websocket.intents, old_websocket.session_id, old_websocket.sequence
@@ -237,8 +237,9 @@ def setup(
         bot.websocket = new_websocket
 
     # Overwrite the listener with the new one
-    new_listener = ExtendedListener()
-    old_listener = bot.websocket.dispatch
-    new_listener.loop = old_listener.loop
-    new_listener.events = old_listener.events
-    bot.websocket.dispatch = new_listener
+    if not isinstance(bot.websocket.dispatch, ExtendedListener):
+        new_listener = ExtendedListener()
+        old_listener = bot.websocket.dispatch
+        new_listener.loop = old_listener.loop
+        new_listener.events = old_listener.events
+        bot.websocket.dispatch = new_listener
