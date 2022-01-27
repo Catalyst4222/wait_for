@@ -86,11 +86,11 @@ async def wait_for(
     :rtype: Any
     """
     while True:
-        fut = bot.websocket.dispatch.add(name=name)
+        fut = bot._websocket.dispatch.add(name=name)
         try:
             res: list = await asyncio.wait_for(fut, timeout=timeout)
         except asyncio.TimeoutError:
-            bot.websocket.dispatch.extra_events[name].remove(fut)
+            bot._websocket.dispatch.extra_events[name].remove(fut)
             raise
 
         if check:
@@ -228,20 +228,20 @@ def setup(
         bot.wait_for = types.MethodType(wait_for, bot)
         bot.wait_for_component = types.MethodType(wait_for_component, bot)
 
-    if add_interaction_events and not isinstance(bot.websocket, ExtendedWebSocket):
-        old_websocket = bot.websocket
+    if add_interaction_events and not isinstance(bot._websocket, ExtendedWebSocket):
+        old_websocket = bot._websocket
         new_websocket = ExtendedWebSocket(
             old_websocket.intents, old_websocket.session_id, old_websocket.sequence
         )
 
         _replace_values(old_websocket, new_websocket)
 
-        bot.websocket = new_websocket
+        bot._websocket = new_websocket
 
     # Overwrite the listener with the new one
-    if not isinstance(bot.websocket.dispatch, ExtendedListener):
+    if not isinstance(bot._websocket.dispatch, ExtendedListener):
         new_listener = ExtendedListener()
-        old_listener = bot.websocket.dispatch
+        old_listener = bot._websocket.dispatch
         new_listener.loop = old_listener.loop
         new_listener.events = old_listener.events
-        bot.websocket.dispatch = new_listener
+        bot._websocket.dispatch = new_listener
