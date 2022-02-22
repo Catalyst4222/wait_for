@@ -1,10 +1,11 @@
 import asyncio
-from inspect import isawaitable
-from typing import Union, Callable, Optional, Any, Awaitable, List
 import types
+from inspect import isawaitable
+from typing import Any, Awaitable, Callable, List, Optional, Union
+
+from interactions.api.dispatch import Listener  # just to avoid ide things
 
 import interactions
-from interactions.api.dispatch import Listener  # just to avoid ide things
 
 
 class ExtendedListener(interactions.api.dispatch.Listener):
@@ -44,25 +45,6 @@ class ExtendedListener(interactions.api.dispatch.Listener):
 interactions.api.dispatch.Listener = ExtendedListener
 
 
-class ExtendedWebSocket(interactions.api.gateway.WebSocket):
-    def handle_dispatch(self, event: str, data: dict) -> None:
-        super().handle_dispatch(event, data)
-
-        if event == "INTERACTION_CREATE":
-            if "type" not in data:
-                return
-
-            context = self.contextualize(data)
-            self.dispatch.dispatch("on_interaction_create", context)
-
-            name: str = interactions.InteractionType(data["type"]).name
-            name = "on_" + name.lower()
-            self.dispatch.dispatch(name, context)
-
-
-interactions.api.gateway.WebSocket = ExtendedWebSocket
-
-
 async def wait_for(
     bot: interactions.Client,
     name: str,
@@ -86,11 +68,11 @@ async def wait_for(
     :rtype: Any
     """
     while True:
-        fut = bot._websocket.dispatch.add(name=name)
+        fut = bot._websocket._dispatch.add(name=name)
         try:
             res: list = await asyncio.wait_for(fut, timeout=timeout)
         except asyncio.TimeoutError:
-            bot._websocket.dispatch.extra_events[name].remove(fut)
+            bot._websocket._dispatch.extra_events[name].remove(fut)
             raise
 
         if check:
@@ -188,7 +170,7 @@ async def wait_for_component(
             return check(ctx)
         return True
 
-    return await wait_for(bot, "on_message_component", check=_check, timeout=timeout)
+    return await wait_for(bot, "on_component", check=_check, timeout=timeout)
 
 
 def _replace_values(old, new):
@@ -209,7 +191,6 @@ def _replace_values(old, new):
 def setup(
     bot: interactions.Client,
     add_method: bool = False,
-    add_interaction_events: bool = True,
 ) -> None:
     """
     Apply hooks to a bot to add additional features
@@ -228,20 +209,10 @@ def setup(
         bot.wait_for = types.MethodType(wait_for, bot)
         bot.wait_for_component = types.MethodType(wait_for_component, bot)
 
-    if add_interaction_events and not isinstance(bot._websocket, ExtendedWebSocket):
-        old_websocket = bot._websocket
-        new_websocket = ExtendedWebSocket(
-            old_websocket.intents, old_websocket.session_id, old_websocket.sequence
-        )
-
-        _replace_values(old_websocket, new_websocket)
-
-        bot._websocket = new_websocket
-
     # Overwrite the listener with the new one
-    if not isinstance(bot._websocket.dispatch, ExtendedListener):
+    if not isinstance(bot._websocket._dispatch, ExtendedListener):
         new_listener = ExtendedListener()
-        old_listener = bot._websocket.dispatch
+        old_listener = bot._websocket._dispatch
         new_listener.loop = old_listener.loop
         new_listener.events = old_listener.events
-        bot._websocket.dispatch = new_listener
+        bot._websocket._dispatch = new_listener
