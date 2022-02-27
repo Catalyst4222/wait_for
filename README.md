@@ -37,13 +37,13 @@ from interactions.ext import wait_for
 Here is an example code which shows you how to wait for a message, with an asynchronous check and a timeout:
 ```py
 from interactions import Client, Message
-from interactions.ext.wait_for import wait_for
+from interactions.ext.wait_for import wait_for, setup
 import asyncio
 
 bot = Client(token="...")
 
 # apply hooks to the class
-wait_for.setup(bot)
+setup(bot)
 
 
 @bot.command(
