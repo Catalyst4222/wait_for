@@ -1,8 +1,11 @@
-from setuptools import setup
 import re
 
-with open('interactions/ext/wait_for/__init__.py') as f:
-    version = re.search(r'^__version__\s*=\s*[\'"]([^\'"]*)[\'"]', f.read(), re.MULTILINE).group(1)
+from setuptools import setup
+
+with open("interactions/ext/wait_for/base.py") as f:
+    version = re.search(
+        r'^__version__\s*=\s*[\'"]([^\'"]*)[\'"]', f.read(), re.MULTILINE
+    ).group(1)
 
 with open("README.md", "r", encoding="utf-8") as f:
     long_description = f.read()
@@ -24,5 +27,5 @@ setup(
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
     ],
-    install_requires=['discord-py-interactions>=4.0.2'],
+    install_requires=["discord-py-interactions>=4.1.0"],
 )
