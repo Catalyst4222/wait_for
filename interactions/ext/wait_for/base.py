@@ -2,6 +2,8 @@ from hashlib import md5
 
 from interactions.ext import Base, Version, VersionAuthor
 
+from .wait_for import wait_for, wait_for_component
+
 
 class VersionAuthor(VersionAuthor):
     def __init__(
@@ -52,3 +54,6 @@ base = Base(
     packages=["interactions.ext.wait_for"],
     requirements=["discord-py-interactions>=4.1.0"],
 )
+
+base.add_service(wait_for, "wait_for")
+base.add_service(wait_for_component, "wait_for_component")
