@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import types
 from inspect import isawaitable
 from typing import Any, Awaitable, Callable, List, Optional, Union
@@ -6,6 +7,8 @@ from typing import Any, Awaitable, Callable, List, Optional, Union
 from interactions.api.dispatch import Listener  # just to avoid ide things
 
 import interactions
+
+logger = logging.getLogger("wait_for")
 
 
 class ExtendedListener(interactions.api.dispatch.Listener):
@@ -17,10 +20,16 @@ class ExtendedListener(interactions.api.dispatch.Listener):
         super().dispatch(name, *args, **kwargs)
 
         futs = self.extra_events.get(name, [])
+        if futs:
+            logger.debug(f"Resolving {len(futs)} futures")
 
         for fut in futs:
             if not fut.done():
                 fut.set_result(args)
+            else:
+                logger.debug(
+                    f"A future for the {name} event was already resolved with the value of {fut.result()}"
+                )
 
             futs.remove(fut)
 
@@ -82,6 +91,7 @@ async def wait_for(
                 checked = await checked
             if not checked:
                 # The check failed, so try again next time
+                logger.info(f"A check failed waiting for the {name} event")
                 continue
 
         # I feel like this needs more?
@@ -200,8 +210,9 @@ def setup(
 
     :param Client bot: The bot instance or class to apply hooks to
     :param bool add_method: If ``wait_for`` should be attached to the bot
-    :param bool add_interaction_events: Whether to add ``on_message_component``, ``on_application_command``, and other interaction event
     """
+
+    logger.info("Setting up the client")
 
     if not isinstance(bot, interactions.Client):
         raise TypeError(f"{bot.__class__.__name__} is not interactions.Client!")
