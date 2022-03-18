@@ -19,7 +19,8 @@ class ExtendedListener(interactions.api.dispatch.Listener):
         futs = self.extra_events.get(name, [])
 
         for fut in futs:
-            fut.set_result(args)
+            if not fut.done():
+                fut.set_result(args)
 
             futs.remove(fut)
 
