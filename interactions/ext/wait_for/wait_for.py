@@ -162,20 +162,21 @@ async def wait_for_component(
 
     if messages:
         if isinstance(messages, interactions.Message):
-            messages_ids.append(messages.id)
-        elif isinstance(messages, int):
-            messages_ids.append(messages)
+            messages_ids.append(int(messages.id))
         elif isinstance(messages, list):
             for message in messages:
                 if isinstance(message, interactions.Message):
-                    messages_ids.append(message.id)
-                elif isinstance(message, int):
-                    messages_ids.append(message)
+                    messages_ids.append(int(message.id))
+                else:
+                    messages_ids.append(int(message))
+        else:  # account for plain ints, string, or Snowflakes
+            messages_ids.append(int(messages))
+
 
     def _check(ctx: interactions.ComponentContext) -> bool:
         if custom_ids and ctx.data.custom_id not in custom_ids:
             return False
-        if messages_ids and ctx.message.id not in messages_ids:
+        if messages_ids and int(ctx.message.id) not in messages_ids:
             return False
         if check:
             return check(ctx)
