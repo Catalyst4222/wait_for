@@ -28,7 +28,7 @@ class ExtendedListener(interactions.api.dispatch.Listener):
                 fut.set_result(args)
             else:
                 logger.debug(
-                    f"A future for the {name} event was already resolved with the value of {fut.result()}"
+                    f"A future for the {name} event was already {'cancelled' if fut.cancelled() else 'resolved'}"
                 )
 
             futs.remove(fut)
