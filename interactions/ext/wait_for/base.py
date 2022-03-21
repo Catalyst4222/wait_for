@@ -38,6 +38,13 @@ class Version(Version):
 class Base(Base):
     __slots__ = ("long_description",)
 
+    def add_service(self, obj: object, name: str):
+        model = {name: obj}
+
+        if self._check_service(name):
+            self.__objects.update(model)
+        return self.__objects.get(name)
+
 
 __version__ = "1.0.3"
 
