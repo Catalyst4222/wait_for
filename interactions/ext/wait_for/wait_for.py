@@ -14,7 +14,7 @@ logger = logging.getLogger("wait_for")
 class ExtendedListener(interactions.api.dispatch.Listener):
     def __init__(self):
         super().__init__()
-        self.extra_events: dict[str, list[asyncio.Future]] = {}
+        self.extra_events: dict[str, List[asyncio.Future]] = {}
 
     def dispatch(self, name: str, *args, **kwargs) -> None:
         super().dispatch(name, *args, **kwargs)
