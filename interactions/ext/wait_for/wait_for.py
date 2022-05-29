@@ -1,12 +1,15 @@
 import asyncio
 import logging
 import types
+import warnings
 from inspect import isawaitable
-from typing import Any, Awaitable, Callable, List, Optional, Union
+from typing import Any, Awaitable, Callable, List, Optional, TypeVar, Union, cast
 
 from interactions.api.dispatch import Listener  # just to avoid ide things
 
 import interactions
+
+Client = TypeVar("Client", bound=interactions.Client)
 
 logger = logging.getLogger("wait_for")
 
@@ -55,8 +58,32 @@ class ExtendedListener(interactions.api.dispatch.Listener):
 interactions.api.dispatch.Listener = ExtendedListener
 
 
+class WaitForClient(interactions.Client):
+    """A Client subclass that adds the wait-for methods, can be instantiated, subclassed, or typecasted"""
+
+    def wait_for(
+        self,
+        name: str,
+        check: Optional[Callable[..., Union[bool, Awaitable[bool]]]] = None,
+        timeout: Optional[float] = None,
+    ):
+        return wait_for(self, name, check, timeout)
+
+    async def wait_for_component(
+        self,
+        components: Union[
+            Union[interactions.Button, interactions.SelectMenu],
+            List[Union[interactions.Button, interactions.SelectMenu]],
+        ] = None,
+        messages: Union[interactions.Message, int, list] = None,
+        check: Optional[Callable[..., Union[bool, Awaitable[bool]]]] = None,
+        timeout: Optional[float] = None,
+    ):
+        return wait_for_component(self, components, messages, check, timeout)
+
+
 async def wait_for(
-    bot: interactions.Client,
+    bot: Client,
     name: str,
     check: Optional[Callable[..., Union[bool, Awaitable[bool]]]] = None,
     timeout: Optional[float] = None,
@@ -104,7 +131,7 @@ async def wait_for(
 
 
 async def wait_for_component(
-    bot: interactions.Client,
+    bot: Client,
     components: Union[
         Union[interactions.Button, interactions.SelectMenu],
         List[Union[interactions.Button, interactions.SelectMenu]],
@@ -172,7 +199,6 @@ async def wait_for_component(
         else:  # account for plain ints, string, or Snowflakes
             messages_ids.append(int(messages))
 
-
     def _check(ctx: interactions.ComponentContext) -> bool:
         if custom_ids and ctx.data.custom_id not in custom_ids:
             return False
@@ -201,9 +227,9 @@ def _replace_values(old, new):
 
 
 def setup(
-    bot: interactions.Client,
-    add_method: bool = False,
-) -> None:
+    bot: Client,
+    add_method: bool = None,
+) -> Union[Client, "WaitForClient"]:
     """
     Apply hooks to a bot to add additional features
 
@@ -211,6 +237,7 @@ def setup(
 
     :param Client bot: The bot instance or class to apply hooks to
     :param bool add_method: If ``wait_for`` should be attached to the bot
+    :return Union[Client, "WaitForClient"]: The typecasted Client
     """
 
     logger.info("Setting up the client")
@@ -218,7 +245,12 @@ def setup(
     if not isinstance(bot, interactions.Client):
         raise TypeError(f"{bot.__class__.__name__} is not interactions.Client!")
 
-    if add_method:
+    if add_method is not None:
+        warnings.warn(
+            "add_method is undergoing depreciation, and will be removed in 2.0"
+        )
+
+    if add_method or add_method is None:
         bot.wait_for = types.MethodType(wait_for, bot)
         bot.wait_for_component = types.MethodType(wait_for_component, bot)
 
@@ -229,3 +261,5 @@ def setup(
         new_listener.loop = old_listener.loop
         new_listener.events = old_listener.events
         bot._websocket._dispatch = new_listener
+
+    return cast(WaitForClient, bot)
