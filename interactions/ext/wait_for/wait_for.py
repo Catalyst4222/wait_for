@@ -5,9 +5,9 @@ import warnings
 from inspect import isawaitable
 from typing import Any, Awaitable, Callable, List, Optional, TypeVar, Union, cast
 
-from interactions.api.dispatch import Listener  # just to avoid ide things
-
+from contextlib import suppress
 import interactions
+from interactions.api.dispatch import Listener  # just to avoid ide things
 
 Client = TypeVar("Client", bound=interactions.Client)
 
@@ -23,18 +23,20 @@ class ExtendedListener(interactions.api.dispatch.Listener):
         super().dispatch(name, *args, **kwargs)
 
         futs = self.extra_events.get(name, [])
-        if futs:
-            logger.debug(f"Resolving {len(futs)} futures")
+        if not futs:
+            return
+
+        logger.debug(f"Resolving {len(futs)} futures")
 
         for fut in futs:
-            if not fut.done():
-                fut.set_result(args)
-            else:
+            if fut.done():
                 logger.debug(
                     f"A future for the {name} event was already {'cancelled' if fut.cancelled() else 'resolved'}"
                 )
+            else:
+                fut.set_result(args)
 
-            futs.remove(fut)
+        self.extra_events[name] = []
 
     def add(self, name: str) -> asyncio.Future:
         """
@@ -46,12 +48,9 @@ class ExtendedListener(interactions.api.dispatch.Listener):
         :rtype: asyncio.Future
         """
         fut = asyncio.get_event_loop().create_future()
-        try:
-            futures = self.extra_events[name]
-        except KeyError:
-            futures = []
-            self.extra_events[name] = futures
+        futures = self.extra_events.get(name, [])
         futures.append(fut)
+        self.extra_events[name] = futures
         return fut
 
 
@@ -107,27 +106,26 @@ async def wait_for(
     while True:
         fut = bot._websocket._dispatch.add(name=name)
         try:
-            res: list = await asyncio.wait_for(fut, timeout=timeout)
+            res: tuple = await asyncio.wait_for(fut, timeout=timeout)
         except asyncio.TimeoutError:
-            bot._websocket._dispatch.extra_events[name].remove(fut)
+            with suppress(ValueError):
+                bot._websocket._dispatch.extra_events[name].remove(fut)
             raise
 
         if check:
             checked = check(*res)
             if isawaitable(checked):
                 checked = await checked
-            if not checked:
+            if checked:
+                break
+            else:
                 # The check failed, so try again next time
                 logger.info(f"A check failed waiting for the {name} event")
-                continue
 
-        # I feel like this needs more?
-        # yes it did
-        if not res:
-            return
-        elif len(res) == 1:
-            return res[0]
-        return res
+    # I feel like this needs more?
+    # yes it did
+    if res:
+        return res[0] if len(res) == 1 else res
 
 
 async def wait_for_component(
@@ -162,17 +160,13 @@ async def wait_for_component(
     if components:
         if isinstance(components, list):
             for component in components:
-                if isinstance(
-                    component, (interactions.Button, interactions.SelectMenu)
-                ):
+                if isinstance(component, (interactions.Button, interactions.SelectMenu)):
                     custom_ids.append(component.custom_id)
                 elif isinstance(component, interactions.ActionRow):
                     custom_ids.extend([c.custom_id for c in component.components])
                 elif isinstance(component, list):
                     for c in component:
-                        if isinstance(
-                            c, (interactions.Button, interactions.SelectMenu)
-                        ):
+                        if isinstance(c, (interactions.Button, interactions.SelectMenu)):
                             custom_ids.append(c.custom_id)
                         elif isinstance(c, interactions.ActionRow):
                             custom_ids.extend([b.custom_id for b in c.components])
@@ -199,31 +193,19 @@ async def wait_for_component(
         else:  # account for plain ints, string, or Snowflakes
             messages_ids.append(int(messages))
 
-    def _check(ctx: interactions.ComponentContext) -> bool:
+    async def _check(ctx: interactions.ComponentContext) -> bool:
         if custom_ids and ctx.data.custom_id not in custom_ids:
             return False
         if messages_ids and int(ctx.message.id) not in messages_ids:
             return False
         if check:
-            return check(ctx)
+            checked = check(ctx)
+            if isawaitable(checked):
+                return await checked
+            return checked
         return True
 
     return await wait_for(bot, "on_component", check=_check, timeout=timeout)
-
-
-def _replace_values(old, new):
-    """Change all values on new to the values on old. Useful if neither object has __dict__"""
-    for item in dir(old):  # can't use __dict__, this should take everything
-        value = getattr(old, item)
-
-        if hasattr(value, "__call__") or isinstance(value, property):
-            # Don't need to get callables or properties, that would un-overwrite things
-            continue
-
-        try:
-            new.__setattr__(item, value)
-        except AttributeError:
-            pass
 
 
 def setup(
@@ -246,9 +228,7 @@ def setup(
         raise TypeError(f"{bot.__class__.__name__} is not interactions.Client!")
 
     if add_method is not None:
-        warnings.warn(
-            "add_method is undergoing depreciation, and will be removed in 2.0"
-        )
+        warnings.warn("add_method is undergoing depreciation, and will be removed in 2.0")
 
     if add_method or add_method is None:
         bot.wait_for = types.MethodType(wait_for, bot)
