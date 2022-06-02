@@ -46,7 +46,7 @@ class Base(Base):
         return self.__objects.get(name)
 
 
-__version__ = "1.0.4"
+__version__ = "1.0.5"
 
 version = Version(
     version=__version__,
