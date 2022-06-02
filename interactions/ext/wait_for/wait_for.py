@@ -193,16 +193,13 @@ async def wait_for_component(
         else:  # account for plain ints, string, or Snowflakes
             messages_ids.append(int(messages))
 
-    async def _check(ctx: interactions.ComponentContext) -> bool:
+    def _check(ctx: interactions.ComponentContext) -> bool:
         if custom_ids and ctx.data.custom_id not in custom_ids:
             return False
         if messages_ids and int(ctx.message.id) not in messages_ids:
             return False
         if check:
-            checked = check(ctx)
-            if isawaitable(checked):
-                return await checked
-            return checked
+            return check(ctx)
         return True
 
     return await wait_for(bot, "on_component", check=_check, timeout=timeout)
