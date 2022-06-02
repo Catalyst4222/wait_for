@@ -131,10 +131,10 @@ async def wait_for(
 async def wait_for_component(
     bot: Client,
     components: Union[
-        Union[interactions.Button, interactions.SelectMenu],
-        List[Union[interactions.Button, interactions.SelectMenu]],
+        Union[str, interactions.Button, interactions.SelectMenu],
+        List[Union[str, interactions.Button, interactions.SelectMenu]],
     ] = None,
-    messages: Union[interactions.Message, int, list] = None,
+    messages: Union[interactions.Message, int, List[Union[interactions.Message, int]]] = None,
     check: Optional[Callable[..., Union[bool, Awaitable[bool]]]] = None,
     timeout: Optional[float] = None,
 ):
@@ -143,14 +143,14 @@ async def wait_for_component(
 
     :param bot: The bot to listen with
     :type bot: interactions.Client
-    :param components: The component to wait for
-    :type components: Union[interactions.Button, interactions.SelectMenu]
+    :param components: The component(s) to wait for
+    :type components: Union[str, interactions.Button, interactions.SelectMenu, List[Union[str, interactions.Button, interactions.SelectMenu]]]
+    :param messages: The message(s) to check for
+    :type messages: Union[interactions.Message, int, List[Union[interactions.Message, int]]]
     :param check: A function or coroutine to call, which should return a truthy value if the data should be returned
     :type check: Callable
     :param timeout: How long to wait for the event before raising an error
     :type timeout: float
-    :param messages: The message to wait for, or a list of messages to wait for
-    :type messages: Union[interactions.Message, int, list]
     :return: The ComponentContext of the dispatched event
     :rtype: interactions.ComponentContext
     """
