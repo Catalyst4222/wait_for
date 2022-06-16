@@ -61,6 +61,9 @@ setup(bot)
 async def test(ctx):
     await ctx.send("grabbing a message...")
 
+    # A simple example check function.
+    # Returns True if the original author is the same as the user invoking the wait_for.
+    # Returns False if another member is attempting to invoke the wait_for
     async def check(msg):
         if int(msg.author.id) == int(ctx.author.user.id):
             return True
@@ -68,10 +71,17 @@ async def test(ctx):
         return False
 
     try:
+        # Define the wait_for.
+        # This particular example listens for the raw on_message_create event which then returns a Message object.
+        # With this, you have the ability to read the content (if the privileged intent has been
+        # approved in the Discord Dev dashboard), any attachments, stickers, etc.
         msg: Message = await wait_for(
             bot, "on_message_create", check=check, timeout=15
         )
+        # Afterwards, here you can put your code to execute after the wait_for has been fulfilled,
+        # the checks have passed, and the timeout has not been reached.
     except asyncio.TimeoutError:
+        # If your specified timeout reaches its end, here you may add your code for that condition.
         return await ctx.send("You said nothing :(")
 
 
@@ -115,11 +125,16 @@ async def test(ctx):
         return False
 
     try:
+        # Like before, this wait_for listens for a certain event, but is made specifically for components.
+        # Although, this returns a new Context, independent of the original context.
         button_ctx: ComponentContext = await bot.wait_for_component(
             components=button, check=check, timeout=15
         )
+        # With this new Context, you're able to send a new response.
+        await button_ctx.send("You clicked it!")
     except asyncio.TimeoutError:
-        return await ctx.send("You didn't click :(")
+        # When it times out, edit the original message and remove the button(s)
+        return await ctx.edit(components=[])
 
 
 bot.start()
