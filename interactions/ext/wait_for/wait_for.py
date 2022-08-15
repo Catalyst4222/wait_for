@@ -7,78 +7,10 @@ from typing import Any, Awaitable, Callable, List, Optional, TypeVar, Union, cas
 
 from contextlib import suppress
 import interactions
-from interactions.api.dispatch import Listener  # just to avoid ide things
 
 Client = TypeVar("Client", bound=interactions.Client)
 
 logger = logging.getLogger("wait_for")
-
-
-class ExtendedListener(interactions.api.dispatch.Listener):
-    def __init__(self):
-        super().__init__()
-        self.extra_events: dict[str, List[asyncio.Future]] = {}
-
-    def dispatch(self, name: str, *args, **kwargs) -> None:
-        super().dispatch(name, *args, **kwargs)
-
-        futs = self.extra_events.get(name, [])
-        if not futs:
-            return
-
-        logger.debug(f"Resolving {len(futs)} futures")
-
-        for fut in futs:
-            if fut.done():
-                logger.debug(
-                    f"A future for the {name} event was already {'cancelled' if fut.cancelled() else 'resolved'}"
-                )
-            else:
-                fut.set_result(args)
-
-        self.extra_events[name] = []
-
-    def add(self, name: str) -> asyncio.Future:
-        """
-        Returns a Future that will resolve whenever the supplied event is dispatched
-
-        :param name: The event to listen for
-        :type name: str
-        :return: A future that will be resolved on the next event dispatch with the data given
-        :rtype: asyncio.Future
-        """
-        fut = asyncio.get_event_loop().create_future()
-        futures = self.extra_events.get(name, [])
-        futures.append(fut)
-        self.extra_events[name] = futures
-        return fut
-
-
-interactions.api.dispatch.Listener = ExtendedListener
-
-
-class WaitForClient(interactions.Client):
-    """A Client subclass that adds the wait-for methods, can be instantiated, subclassed, or typecasted"""
-
-    def wait_for(
-        self,
-        name: str,
-        check: Optional[Callable[..., Union[bool, Awaitable[bool]]]] = None,
-        timeout: Optional[float] = None,
-    ):
-        return wait_for(self, name, check, timeout)
-
-    async def wait_for_component(
-        self,
-        components: Union[
-            Union[interactions.Button, interactions.SelectMenu],
-            List[Union[interactions.Button, interactions.SelectMenu]],
-        ] = None,
-        messages: Union[interactions.Message, int, list] = None,
-        check: Optional[Callable[..., Union[bool, Awaitable[bool]]]] = None,
-        timeout: Optional[float] = None,
-    ):
-        return wait_for_component(self, components, messages, check, timeout)
 
 
 async def wait_for(
@@ -204,6 +136,9 @@ async def wait_for_component(
 
     return await wait_for(bot, "on_component", check=_check, timeout=timeout)
 
+# circular imports yay
+from .classes import WaitForClient, ExtendedListener  # noqa: E402
+
 
 def setup(
     bot: Client,
@@ -225,7 +160,7 @@ def setup(
         raise TypeError(f"{bot.__class__.__name__} is not interactions.Client!")
 
     if add_method is not None:
-        warnings.warn("add_method is undergoing depreciation, and will be removed in 2.0")
+        warnings.warn("add_method is undergoing depreciation, and will be removed in 1.1")
 
     if add_method or add_method is None:
         bot.wait_for = types.MethodType(wait_for, bot)
